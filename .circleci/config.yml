@@ -1,0 +1,53 @@
+version: 2.1
+
+orbs:
+  win: circleci/windows@2.2.0
+
+commands:
+  checkout_app:
+    steps:
+      - checkout
+  install_deps:
+    steps:
+      - restore_cache:
+          name: Restore Cached Dependencies
+          key: dependency-cache-{{ checksum "package.json" }}
+      - run:
+          name: Install Dependencies
+          command: npm install
+      - save_cache:
+          name: Cache Dependencies
+          paths:
+            - node_modules
+          key: dependency-cache-{{ checksum "package.json" }}
+  build_app:
+    parameters:
+      make_flags:
+        type: string
+        default: ''
+    steps:
+      - checkout_app
+      - install_deps
+      - run:
+          name: Build with << parameters.make_flags >>
+          command: npm run publish
+      - store_artifacts:
+          path: out/make
+          destination: make
+      - persist_to_workspace:
+          root: out
+          paths:
+            - make
+            - publish-dry-run
+jobs:
+  build-windows:
+    executor:
+      name: win/default
+      shell: bash.exe
+    steps:
+      - build_app
+
+workflows:
+  ci:
+    jobs:
+      - build-windows
